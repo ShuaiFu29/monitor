@@ -1,5 +1,3 @@
-import { generateId } from '@monitor/utils';
-
 /**
  * 链路追踪上下文
  *
