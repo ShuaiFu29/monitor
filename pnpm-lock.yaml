@@ -99,6 +99,24 @@ importers:
         specifier: workspace:*
         version: link:../utils
 
+  packages/network:
+    dependencies:
+      '@monitor/types':
+        specifier: workspace:*
+        version: link:../types
+      '@monitor/utils':
+        specifier: workspace:*
+        version: link:../utils
+
+  packages/performance:
+    dependencies:
+      '@monitor/types':
+        specifier: workspace:*
+        version: link:../types
+      '@monitor/utils':
+        specifier: workspace:*
+        version: link:../utils
+
   packages/types: {}
 
   packages/utils:
