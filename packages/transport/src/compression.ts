@@ -12,14 +12,17 @@ import { logger } from '@monitor/utils';
  * - 压缩后使用 Uint8Array 发送，配合 Content-Encoding: gzip
  */
 
+/** fflate 接受的压缩级别 */
+type GzipLevel = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
+
 /**
  * 压缩字符串数据为 gzip 格式
  *
  * @param data 原始字符串（通常是 JSON）
- * @param level 压缩级别 1-9，默认 6（平衡速度和体积）
+ * @param level 压缩级别 0-9，默认 6（平衡速度和体积）
  * @returns 压缩后的 Uint8Array
  */
-export function compress(data: string, level: number = 6): Uint8Array {
+export function compress(data: string, level: GzipLevel = 6): Uint8Array {
   try {
     const raw = strToU8(data);
     return gzipSync(raw, { level });

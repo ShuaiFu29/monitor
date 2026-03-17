@@ -31,16 +31,10 @@ export class BeaconStrategy implements SendStrategy {
 
   async send(url: string, data: string | Uint8Array, headers?: Record<string, string>): Promise<boolean> {
     try {
-      let blob: Blob;
-      if (data instanceof Uint8Array) {
-        blob = new Blob([data], {
-          type: headers?.['Content-Type'] || 'application/octet-stream',
-        });
-      } else {
-        blob = new Blob([data], {
-          type: headers?.['Content-Type'] || 'application/json',
-        });
-      }
+      const isBytes = data instanceof Uint8Array;
+      const mimeType = headers?.['Content-Type'] || (isBytes ? 'application/octet-stream' : 'application/json');
+      const blobParts: BlobPart[] = isBytes ? [data.buffer as ArrayBuffer] : [data];
+      const blob = new Blob(blobParts, { type: mimeType });
       return navigator.sendBeacon(url, blob);
     } catch (error) {
       logger.warn('[BeaconStrategy] sendBeacon failed:', error as Error);
@@ -66,13 +60,13 @@ export class FetchStrategy implements SendStrategy {
 
   async send(url: string, data: string | Uint8Array, headers?: Record<string, string>): Promise<boolean> {
     try {
+      const isBytes = data instanceof Uint8Array;
+      const body: BodyInit = isBytes ? (data.buffer as ArrayBuffer) : data;
       const response = await fetch(url, {
         method: 'POST',
-        body: data,
+        body,
         headers: {
-          'Content-Type': data instanceof Uint8Array
-            ? 'application/octet-stream'
-            : 'application/json',
+          'Content-Type': isBytes ? 'application/octet-stream' : 'application/json',
           ...headers,
         },
         keepalive: true,
@@ -128,8 +122,12 @@ export class XHRStrategy implements SendStrategy {
           }
         }
 
+        const xhrBody = data instanceof Uint8Array
+          ? new Blob([data.buffer as ArrayBuffer])
+          : data;
+
         if (this.sync) {
-          xhr.send(data instanceof Uint8Array ? new Blob([data]) : data);
+          xhr.send(xhrBody);
           resolve(xhr.status >= 200 && xhr.status < 300);
         } else {
           xhr.onloadend = () => {
@@ -138,7 +136,7 @@ export class XHRStrategy implements SendStrategy {
           xhr.onerror = () => resolve(false);
           xhr.ontimeout = () => resolve(false);
           xhr.timeout = 10000;
-          xhr.send(data instanceof Uint8Array ? new Blob([data]) : data);
+          xhr.send(xhrBody);
         }
       } catch (error) {
         logger.warn('[XHRStrategy] XHR failed:', error as Error);
