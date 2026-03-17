@@ -1,0 +1,34 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "outDir": "./dist",
+    "rootDir": ".",
+    "baseUrl": ".",
+    "paths": {
+      "@monitor/types": ["packages/types/src"],
+      "@monitor/utils": ["packages/utils/src"],
+      "@monitor/core": ["packages/core/src"],
+      "@monitor/browser": ["packages/browser/src"],
+      "@monitor/error": ["packages/error/src"],
+      "@monitor/performance": ["packages/performance/src"],
+      "@monitor/network": ["packages/network/src"],
+      "@monitor/behavior": ["packages/behavior/src"],
+      "@monitor/transport": ["packages/transport/src"],
+      "@monitor/replay": ["packages/replay/src"],
+      "@monitor/web-vitals": ["packages/web-vitals/src"]
+    }
+  },
+  "include": ["packages/*/src/**/*.ts"],
+  "exclude": ["node_modules", "dist", "**/*.test.ts", "**/*.spec.ts"]
+}

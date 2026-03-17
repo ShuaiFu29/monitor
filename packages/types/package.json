@@ -1,0 +1,22 @@
+{
+  "name": "@monitor/types",
+  "version": "0.1.0",
+  "description": "Type definitions for Monitor SDK",
+  "main": "dist/index.cjs.js",
+  "module": "dist/index.esm.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.esm.js",
+      "require": "./dist/index.cjs.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "rollup -c rollup.config.js",
+    "clean": "rm -rf dist"
+  },
+  "sideEffects": false,
+  "license": "MIT"
+}

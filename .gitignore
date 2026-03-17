@@ -1,0 +1,38 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Test coverage
+coverage/
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.codewiz/
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Lock files (optional - some projects commit this)
+# pnpm-lock.yaml
+
+# Misc
+*.tgz
+.changeset/*.md
+!.changeset/config.json
