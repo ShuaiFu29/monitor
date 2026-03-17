@@ -90,6 +90,15 @@ importers:
         specifier: workspace:*
         version: link:../utils
 
+  packages/error:
+    dependencies:
+      '@monitor/types':
+        specifier: workspace:*
+        version: link:../types
+      '@monitor/utils':
+        specifier: workspace:*
+        version: link:../utils
+
   packages/types: {}
 
   packages/utils:
