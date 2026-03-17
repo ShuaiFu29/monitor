@@ -115,6 +115,31 @@ processData@http://example.com/app.js:30:10`;
       const nativeFrames = frames.filter((f) => f.url === '[native code]');
       expect(nativeFrames.length).toBe(0);
     });
+
+    it('应处理 "module code" Safari 特殊标识', () => {
+      const stack = `module code@http://example.com/app.js:1:1
+eval code@http://example.com/app.js:2:2`;
+      const frames = parseStack(stack);
+      // "module code" 和 "eval code" 应被清理为 <anonymous>
+      expect(frames.length).toBeGreaterThanOrEqual(1);
+      frames.forEach((f) => {
+        expect(f.function).toBe('<anonymous>');
+      });
+    });
+
+    it('应将 "?" 函数名处理为 <anonymous>', () => {
+      const stack = `?@http://example.com/app.js:1:1`;
+      const frames = parseStack(stack);
+      expect(frames.length).toBe(1);
+      expect(frames[0].function).toBe('<anonymous>');
+    });
+
+    it('应将 "anonymous" 函数名处理为 <anonymous>', () => {
+      const stack = `anonymous@http://example.com/app.js:1:1`;
+      const frames = parseStack(stack);
+      expect(frames.length).toBe(1);
+      expect(frames[0].function).toBe('<anonymous>');
+    });
   });
 
   // ────── 边界情况 ──────

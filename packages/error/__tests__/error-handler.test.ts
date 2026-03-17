@@ -369,4 +369,235 @@ describe('ErrorHandler', () => {
       noResourceHandler.uninstall();
     });
   });
+
+  // ────── 访问器方法 ──────
+  describe('访问器方法', () => {
+    it('getBreadcrumbManager 应返回面包屑管理器', () => {
+      const mgr = handler.getBreadcrumbManager();
+      expect(mgr).toBeDefined();
+      expect(typeof mgr.add).toBe('function');
+      expect(typeof mgr.getAll).toBe('function');
+    });
+
+    it('getAggregator 应返回聚合器', () => {
+      const agg = handler.getAggregator();
+      expect(agg).toBeDefined();
+      expect(typeof agg.generateFingerprint).toBe('function');
+      expect(typeof agg.shouldReport).toBe('function');
+    });
+  });
+
+  // ────── 资源错误捕获 ──────
+  describe('资源错误捕获', () => {
+    it('应捕获 img 资源加载错误', () => {
+      handler.install(monitor);
+
+      // 找到捕获阶段 error handler
+      const resourceCall = addEventListenerSpy.mock.calls.find(
+        (call) => call[0] === 'error' && call[2] === true,
+      );
+      expect(resourceCall).toBeDefined();
+      const resourceHandler = resourceCall![1] as (event: Event) => void;
+
+      // 模拟 img 资源加载错误
+      const imgEl = document.createElement('img');
+      (imgEl as HTMLImageElement).src = 'http://example.com/broken.png';
+      const event = new Event('error');
+      Object.defineProperty(event, 'target', { value: imgEl });
+
+      resourceHandler(event);
+
+      expect(monitor.captureEvent).toHaveBeenCalledTimes(1);
+      const captured = monitor.capturedEvents[0] as Record<string, unknown>;
+      expect(captured.subType).toBe('resource_error');
+      expect((captured.message as string)).toContain('broken.png');
+    });
+
+    it('应捕获 script 资源加载错误', () => {
+      handler.install(monitor);
+
+      const resourceCall = addEventListenerSpy.mock.calls.find(
+        (call) => call[0] === 'error' && call[2] === true,
+      );
+      const resourceHandler = resourceCall![1] as (event: Event) => void;
+
+      const scriptEl = document.createElement('script');
+      (scriptEl as HTMLScriptElement).src = 'http://example.com/broken.js';
+      const event = new Event('error');
+      Object.defineProperty(event, 'target', { value: scriptEl });
+
+      resourceHandler(event);
+
+      expect(monitor.captureEvent).toHaveBeenCalledTimes(1);
+    });
+
+    it('应忽略非资源元素的 error 事件', () => {
+      handler.install(monitor);
+
+      const resourceCall = addEventListenerSpy.mock.calls.find(
+        (call) => call[0] === 'error' && call[2] === true,
+      );
+      const resourceHandler = resourceCall![1] as (event: Event) => void;
+
+      // div 不是资源元素
+      const divEl = document.createElement('div');
+      const event = new Event('error');
+      Object.defineProperty(event, 'target', { value: divEl });
+
+      resourceHandler(event);
+
+      expect(monitor.captureEvent).not.toHaveBeenCalled();
+    });
+
+    it('应忽略 window 对象触发的 error 事件', () => {
+      handler.install(monitor);
+
+      const resourceCall = addEventListenerSpy.mock.calls.find(
+        (call) => call[0] === 'error' && call[2] === true,
+      );
+      const resourceHandler = resourceCall![1] as (event: Event) => void;
+
+      const event = new Event('error');
+      Object.defineProperty(event, 'target', { value: window });
+
+      resourceHandler(event);
+
+      expect(monitor.captureEvent).not.toHaveBeenCalled();
+    });
+
+    it('应忽略 target 为 null 的 error 事件', () => {
+      handler.install(monitor);
+
+      const resourceCall = addEventListenerSpy.mock.calls.find(
+        (call) => call[0] === 'error' && call[2] === true,
+      );
+      const resourceHandler = resourceCall![1] as (event: Event) => void;
+
+      const event = new Event('error');
+      Object.defineProperty(event, 'target', { value: null });
+
+      resourceHandler(event);
+
+      expect(monitor.captureEvent).not.toHaveBeenCalled();
+    });
+  });
+
+  // ────── URL 忽略 ──────
+  describe('URL 忽略 (ignoreUrls)', () => {
+    it('应忽略匹配 ignoreUrls 字符串的资源错误', () => {
+      const filteredHandler = new ErrorHandler({
+        ignoreUrls: ['analytics.example.com'],
+      });
+      filteredHandler.install(monitor);
+
+      const resourceCall = addEventListenerSpy.mock.calls.find(
+        (call) => call[0] === 'error' && call[2] === true,
+      );
+      const resourceHandler = resourceCall![1] as (event: Event) => void;
+
+      const imgEl = document.createElement('img');
+      (imgEl as HTMLImageElement).src = 'http://analytics.example.com/pixel.gif';
+      const event = new Event('error');
+      Object.defineProperty(event, 'target', { value: imgEl });
+
+      resourceHandler(event);
+
+      expect(monitor.captureEvent).not.toHaveBeenCalled();
+
+      filteredHandler.uninstall();
+    });
+
+    it('应忽略匹配 ignoreUrls 正则的资源错误', () => {
+      const filteredHandler = new ErrorHandler({
+        ignoreUrls: [/\.tracking\./],
+      });
+      filteredHandler.install(monitor);
+
+      const resourceCall = addEventListenerSpy.mock.calls.find(
+        (call) => call[0] === 'error' && call[2] === true,
+      );
+      const resourceHandler = resourceCall![1] as (event: Event) => void;
+
+      const imgEl = document.createElement('img');
+      (imgEl as HTMLImageElement).src = 'http://cdn.tracking.net/pixel.gif';
+      const event = new Event('error');
+      Object.defineProperty(event, 'target', { value: imgEl });
+
+      resourceHandler(event);
+
+      expect(monitor.captureEvent).not.toHaveBeenCalled();
+
+      filteredHandler.uninstall();
+    });
+  });
+
+  // ────── captureError 扩展 ──────
+  describe('captureError 扩展', () => {
+    it('应支持指定 subType', () => {
+      handler.install(monitor);
+      handler.captureError(new Error('Custom error'), 'unhandled_rejection');
+
+      expect(monitor.captureEvent).toHaveBeenCalledTimes(1);
+      const event = monitor.capturedEvents[0] as Record<string, unknown>;
+      expect(event.subType).toBe('unhandled_rejection');
+    });
+  });
+
+  // ────── Promise 拒绝: null/undefined reason ──────
+  describe('Promise 拒绝 — 特殊 reason', () => {
+    function createRejectionEvent(reason: unknown): Event {
+      const event = new Event('unhandledrejection');
+      (event as unknown as Record<string, unknown>).reason = reason;
+      (event as unknown as Record<string, unknown>).promise = Promise.resolve();
+      return event;
+    }
+
+    it('应处理 null reason', () => {
+      handler.install(monitor);
+      window.dispatchEvent(createRejectionEvent(null));
+
+      expect(monitor.captureEvent).toHaveBeenCalledTimes(1);
+      const event = monitor.capturedEvents[0] as Record<string, unknown>;
+      expect(event.message).toContain('Unhandled Promise rejection');
+    });
+
+    it('应处理 undefined reason', () => {
+      handler.install(monitor);
+      window.dispatchEvent(createRejectionEvent(undefined));
+
+      expect(monitor.captureEvent).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  // ────── uninstall 详细行为 ──────
+  describe('uninstall 详细行为', () => {
+    it('uninstall 应清空聚合器和面包屑', () => {
+      handler.install(monitor);
+
+      // 添加面包屑
+      handler.getBreadcrumbManager().info('test message', 'test');
+
+      // 触发一个错误以给聚合器添加记录
+      handler.captureError(new Error('test'));
+
+      // uninstall
+      handler.uninstall();
+
+      // 面包屑和聚合器应被清空
+      expect(handler.getBreadcrumbManager().getAll().length).toBe(0);
+    });
+
+    it('uninstall 后不影响被第三方覆盖的 window.onerror', () => {
+      handler.install(monitor);
+
+      // 第三方覆盖了 window.onerror
+      const thirdPartyHandler = () => {};
+      window.onerror = thirdPartyHandler;
+
+      handler.uninstall();
+
+      // 不应清除第三方的 handler
+      expect(window.onerror).toBe(thirdPartyHandler);
+    });
+  });
 });
