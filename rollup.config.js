@@ -3,17 +3,21 @@ import commonjs from '@rollup/plugin-commonjs';
 import typescript from '@rollup/plugin-typescript';
 import terser from '@rollup/plugin-terser';
 import dts from 'rollup-plugin-dts';
+import { fileURLToPath } from 'url';
 import path from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 /**
  * 为每个 package 创建 rollup 配置
- * @param {string} pkg - 包名 (如 'core', 'types')
+ * @param {string} packageDir - 包目录的绝对路径
  * @param {object} options - 额外选项
  */
-export function createPackageConfig(pkg, options = {}) {
-  const packageDir = path.resolve('packages', pkg);
+export function createPackageConfig(packageDir, options = {}) {
   const input = path.resolve(packageDir, 'src/index.ts');
-  const { external = [], globals = {} } = options;
+  const tsconfigPath = path.resolve(packageDir, 'tsconfig.json');
+  const { external = [] } = options;
 
   const baseExternal = [
     '@monitor/types',
@@ -43,7 +47,7 @@ export function createPackageConfig(pkg, options = {}) {
         resolve(),
         commonjs(),
         typescript({
-          tsconfig: path.resolve(packageDir, 'tsconfig.json'),
+          tsconfig: tsconfigPath,
           declaration: false,
         }),
         terser({
@@ -67,3 +71,5 @@ export function createPackageConfig(pkg, options = {}) {
     },
   ];
 }
+
+export { __dirname as rootDir };
