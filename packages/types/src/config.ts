@@ -1,6 +1,5 @@
 import type { BaseEvent } from './event';
 import type { Plugin } from './plugin';
-import type { UserInfo } from './user';
 
 /**
  * SDK 核心配置

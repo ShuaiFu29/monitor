@@ -55,9 +55,9 @@ export class Logger {
 
     const consoleFn =
       level === 'debug'
-        ? console.debug
+        ? console.debug // eslint-disable-line no-console
         : level === 'info'
-          ? console.info
+          ? console.info // eslint-disable-line no-console
           : level === 'warn'
             ? console.warn
             : console.error;
