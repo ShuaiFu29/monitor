@@ -1,0 +1,27 @@
+{
+  "name": "@monitor/replay",
+  "version": "0.1.0",
+  "description": "Session Replay recording plugin for Monitor SDK — DOM snapshot, mutation tracking, user interaction recording with privacy sanitization",
+  "main": "dist/index.cjs.js",
+  "module": "dist/index.esm.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.esm.js",
+      "require": "./dist/index.cjs.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "rollup -c rollup.config.js",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@monitor/types": "workspace:*",
+    "@monitor/utils": "workspace:*",
+    "fflate": "^0.8.2"
+  },
+  "sideEffects": false,
+  "license": "MIT"
+}

@@ -120,6 +120,18 @@ importers:
         specifier: workspace:*
         version: link:../utils
 
+  packages/replay:
+    dependencies:
+      '@monitor/types':
+        specifier: workspace:*
+        version: link:../types
+      '@monitor/utils':
+        specifier: workspace:*
+        version: link:../utils
+      fflate:
+        specifier: ^0.8.2
+        version: 0.8.2
+
   packages/transport:
     dependencies:
       '@monitor/types':
