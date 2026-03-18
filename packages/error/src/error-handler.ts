@@ -4,6 +4,7 @@ import { logger } from '@monitor/utils';
 import { parseStack, extractStack } from './stack-parser';
 import { ErrorAggregator, type AggregatorConfig } from './aggregator';
 import { BreadcrumbManager, type BreadcrumbConfig } from './breadcrumb';
+import { SourceMapResolver, type SourceMapConfig } from './source-map';
 
 /**
  * 错误处理器
@@ -35,6 +36,8 @@ export interface ErrorHandlerConfig {
   captureResourceErrors?: boolean;
   /** 最大堆栈帧数，默认 50 */
   maxFrames?: number;
+  /** SourceMap 配置。设置后启用 SourceMap 反解 */
+  sourceMap?: SourceMapConfig;
 }
 
 const DEFAULT_CONFIG: Required<ErrorHandlerConfig> = {
@@ -45,12 +48,14 @@ const DEFAULT_CONFIG: Required<ErrorHandlerConfig> = {
   captureUnhandledRejections: true,
   captureResourceErrors: true,
   maxFrames: 50,
+  sourceMap: {},
 };
 
 export class ErrorHandler {
   private config: Required<ErrorHandlerConfig>;
   private aggregator: ErrorAggregator;
   private breadcrumbManager: BreadcrumbManager;
+  private sourceMapResolver: SourceMapResolver | null = null;
   private monitor: MonitorInterface | null = null;
 
   /** 防止递归标志 */
@@ -65,6 +70,18 @@ export class ErrorHandler {
     this.config = { ...DEFAULT_CONFIG, ...config };
     this.aggregator = new ErrorAggregator(this.config.aggregator);
     this.breadcrumbManager = new BreadcrumbManager(this.config.breadcrumb);
+
+    // 初始化 SourceMap 解析器（如果提供了配置）
+    if (config.sourceMap) {
+      this.sourceMapResolver = new SourceMapResolver(config.sourceMap);
+    }
+  }
+
+  /**
+   * 获取 SourceMap 解析器（供测试和高级用法）
+   */
+  getSourceMapResolver(): SourceMapResolver | null {
+    return this.sourceMapResolver;
   }
 
   /**
@@ -238,22 +255,62 @@ export class ErrorHandler {
       // 6. 添加面包屑（记录本次错误）
       this.breadcrumbManager.error(`${error.name}: ${error.message}`, 'error');
 
-      // 7. 上报
-      this.reportError({
-        message: error.message,
-        name: error.name,
-        stack: stackString,
-        frames,
-        fingerprint,
-        subType,
-        breadcrumbs,
-      });
+      // 7. 如果启用了 SourceMap，异步解析后上报；否则直接上报
+      if (this.sourceMapResolver) {
+        this.resolveAndReport({
+          message: error.message,
+          name: error.name,
+          stack: stackString,
+          frames,
+          fingerprint,
+          subType,
+          breadcrumbs,
+        });
+      } else {
+        this.reportError({
+          message: error.message,
+          name: error.name,
+          stack: stackString,
+          frames,
+          fingerprint,
+          subType,
+          breadcrumbs,
+        });
+      }
     } catch (internalError) {
       // SDK 自身异常不应影响业务页面
       logger.error('[ErrorHandler] Internal error:', internalError as Error);
     } finally {
       this._isHandling = false;
     }
+  }
+
+  /**
+   * 异步解析 SourceMap 后上报
+   */
+  private resolveAndReport(data: {
+    message: string;
+    name?: string;
+    stack?: string;
+    frames: StackFrame[];
+    fingerprint: string;
+    subType: ErrorSubType;
+    breadcrumbs: Breadcrumb[];
+  }): void {
+    if (!this.sourceMapResolver) {
+      this.reportError(data);
+      return;
+    }
+
+    this.sourceMapResolver
+      .resolveFrames(data.frames)
+      .then((resolvedFrames) => {
+        this.reportError({ ...data, frames: resolvedFrames });
+      })
+      .catch(() => {
+        // SourceMap 解析失败，仍然使用原始帧上报
+        this.reportError(data);
+      });
   }
 
   /**

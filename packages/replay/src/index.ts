@@ -271,3 +271,5 @@ export { EventRecorder } from './recorder';
 export type { InteractionCallback, EventRecorderConfig } from './recorder';
 export { ReplayCompressor } from './compressor';
 export type { CompressResult, CompressorConfig } from './compressor';
+export { ReplayPlayer } from './player';
+export type { PlayerState, PlayerCallbacks, PlayerConfig } from './player';

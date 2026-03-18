@@ -81,3 +81,4 @@ export { ErrorHandler, type ErrorHandlerConfig } from './error-handler';
 export { parseStack, extractStack, detectStackFormat } from './stack-parser';
 export { ErrorAggregator, type AggregatorConfig } from './aggregator';
 export { BreadcrumbManager, type BreadcrumbConfig } from './breadcrumb';
+export { SourceMapResolver, type SourceMapConfig, type RawSourceMap } from './source-map';
