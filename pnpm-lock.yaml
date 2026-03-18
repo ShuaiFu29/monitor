@@ -72,6 +72,15 @@ importers:
         specifier: ^1.6.0
         version: 1.6.1(@types/node@20.19.37)(happy-dom@14.12.3)(terser@5.46.1)
 
+  packages/behavior:
+    dependencies:
+      '@monitor/types':
+        specifier: workspace:*
+        version: link:../types
+      '@monitor/utils':
+        specifier: workspace:*
+        version: link:../utils
+
   packages/browser:
     dependencies:
       '@monitor/core':
@@ -151,6 +160,18 @@ importers:
       '@monitor/types':
         specifier: workspace:*
         version: link:../types
+
+  packages/worker:
+    dependencies:
+      '@monitor/types':
+        specifier: workspace:*
+        version: link:../types
+      '@monitor/utils':
+        specifier: workspace:*
+        version: link:../utils
+      fflate:
+        specifier: ^0.8.2
+        version: 0.8.2
 
 packages:
 
