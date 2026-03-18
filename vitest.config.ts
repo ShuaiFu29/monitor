@@ -37,6 +37,7 @@ export default defineConfig({
       '@monitor/behavior': path.resolve(__dirname, 'packages/behavior/src'),
       '@monitor/transport': path.resolve(__dirname, 'packages/transport/src'),
       '@monitor/replay': path.resolve(__dirname, 'packages/replay/src'),
+      '@monitor/worker': path.resolve(__dirname, 'packages/worker/src'),
       '@monitor/web-vitals': path.resolve(__dirname, 'packages/web-vitals/src'),
     },
   },

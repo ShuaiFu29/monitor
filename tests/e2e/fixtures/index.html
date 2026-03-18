@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Monitor SDK E2E Test Page</title>
+  <style>
+    body { font-family: sans-serif; margin: 20px; }
+    button { margin: 5px; padding: 8px 16px; cursor: pointer; }
+    input { margin: 5px; padding: 8px; }
+    #status { margin-top: 20px; padding: 10px; background: #f0f0f0; }
+  </style>
+</head>
+<body>
+  <h1 id="title">Monitor SDK E2E Test Page</h1>
+
+  <div id="actions">
+    <button id="btn-error">Throw Error</button>
+    <button id="btn-promise-error">Promise Rejection</button>
+    <button id="btn-fetch">Make Fetch Request</button>
+    <button id="btn-xhr">Make XHR Request</button>
+    <button id="btn-click" data-action="test-click">Click Tracker Test</button>
+    <button id="btn-navigate">Navigate</button>
+    <button id="btn-destroy">Destroy SDK</button>
+    <button id="btn-custom-event">Custom Event</button>
+  </div>
+
+  <div id="forms">
+    <input type="text" id="input-name" placeholder="Your name" />
+    <input type="password" id="input-password" placeholder="Password" data-sensitive />
+    <input type="email" id="input-email" placeholder="Email" />
+  </div>
+
+  <div id="dynamic-area"></div>
+
+  <div id="status">SDK Status: <span id="sdk-status">Not initialized</span></div>
+  <div id="log"></div>
+
+  <script src="/fixtures/monitor-sdk.js"></script>
+  <script>
+    // ── Globals ──
+    window.__capturedEvents = [];
+    window.__sdkReady = false;
+
+    function log(msg) {
+      const el = document.getElementById('log');
+      const p = document.createElement('p');
+      p.textContent = msg;
+      el.appendChild(p);
+    }
+
+    // ── Initialize SDK ──
+    function initSDK(config) {
+      const defaults = {
+        dsn: 'http://localhost:3456/api/report',
+        sampleRate: 1.0,
+        errorSampleRate: 1.0,
+        performanceSampleRate: 1.0,
+        batchSize: 1,
+        flushInterval: 500,
+        plugins: [],
+        beforeSend: function(event) {
+          window.__capturedEvents.push(JSON.parse(JSON.stringify(event)));
+          return event;
+        },
+      };
+      const merged = Object.assign({}, defaults, config);
+      window.__monitor = MonitorSDK.createMonitor(merged);
+      window.__sdkReady = true;
+      document.getElementById('sdk-status').textContent = 'Initialized';
+      log('SDK initialized');
+      return window.__monitor;
+    }
+
+    // ── Actions ──
+    document.getElementById('btn-error').addEventListener('click', function() {
+      undefinedFunction(); // ReferenceError
+    });
+
+    document.getElementById('btn-promise-error').addEventListener('click', function() {
+      Promise.reject(new Error('Unhandled promise rejection test'));
+    });
+
+    document.getElementById('btn-fetch').addEventListener('click', function() {
+      fetch('/api/events', {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+      }).then(function() { log('Fetch completed'); });
+    });
+
+    document.getElementById('btn-xhr').addEventListener('click', function() {
+      var xhr = new XMLHttpRequest();
+      xhr.open('GET', '/api/events');
+      xhr.onload = function() { log('XHR completed'); };
+      xhr.send();
+    });
+
+    document.getElementById('btn-navigate').addEventListener('click', function() {
+      history.pushState(null, '', '/page2');
+      log('Navigated to /page2');
+    });
+
+    document.getElementById('btn-destroy').addEventListener('click', function() {
+      if (window.__monitor) {
+        window.__monitor.destroy();
+        document.getElementById('sdk-status').textContent = 'Destroyed';
+        window.__sdkReady = false;
+        log('Monitor destroyed');
+      }
+    });
+
+    document.getElementById('btn-custom-event').addEventListener('click', function() {
+      if (window.__monitor) {
+        window.__monitor.captureEvent({
+          type: 'custom',
+          action: 'button_click',
+          data: { buttonId: 'btn-custom-event' },
+        });
+        log('Custom event captured');
+      }
+    });
+  </script>
+</body>
+</html>

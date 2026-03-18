@@ -26,6 +26,7 @@
       "@monitor/behavior": ["packages/behavior/src"],
       "@monitor/transport": ["packages/transport/src"],
       "@monitor/replay": ["packages/replay/src"],
+      "@monitor/worker": ["packages/worker/src"],
       "@monitor/web-vitals": ["packages/web-vitals/src"]
     }
   },

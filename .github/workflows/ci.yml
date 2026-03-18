@@ -46,6 +46,22 @@ jobs:
         run: pnpm size-limit
         if: matrix.node-version == 22
 
+      - name: Performance Benchmark
+        run: pnpm test:benchmark
+        if: matrix.node-version == 22
+
+      - name: Build E2E SDK Bundle
+        run: pnpm test:e2e:build
+        if: matrix.node-version == 22
+
+      - name: Install Playwright Chromium
+        run: npx playwright install chromium --with-deps
+        if: matrix.node-version == 22
+
+      - name: E2E Tests
+        run: npx playwright test
+        if: matrix.node-version == 22
+
       - name: Upload coverage
         uses: codecov/codecov-action@v4
         if: matrix.node-version == 22

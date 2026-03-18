@@ -1,0 +1,25 @@
+{
+  "$schema": "https://unpkg.com/@changesets/config@3.1.1/schema.json",
+  "changelog": "@changesets/cli/changelog",
+  "commit": false,
+  "fixed": [
+    [
+      "@monitor/types",
+      "@monitor/utils",
+      "@monitor/core",
+      "@monitor/browser",
+      "@monitor/error",
+      "@monitor/performance",
+      "@monitor/network",
+      "@monitor/transport",
+      "@monitor/replay",
+      "@monitor/worker",
+      "@monitor/behavior"
+    ]
+  ],
+  "linked": [],
+  "access": "public",
+  "baseBranch": "main",
+  "updateInternalDependencies": "patch",
+  "ignore": []
+}

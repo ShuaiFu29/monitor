@@ -32,7 +32,13 @@ Thumbs.db
 # Lock files (optional - some projects commit this)
 # pnpm-lock.yaml
 
+# Playwright
+test-results/
+playwright-report/
+
+# E2E build artifacts
+tests/e2e/fixtures/monitor-sdk.js
+tests/e2e/fixtures/monitor-sdk.js.map
+
 # Misc
 *.tgz
-.changeset/*.md
-!.changeset/config.json

@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Monitor SDK — React Example</title>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0f172a; color: #e2e8f0; min-height: 100vh;
+    }
+    #root { max-width: 860px; margin: 0 auto; padding: 24px; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script src="../../tests/e2e/fixtures/monitor-sdk.js"></script>
+  <script type="text/babel" data-type="module">
+    const { useState, useEffect, useRef, useCallback } = React;
+
+    // ── SDK Setup ──
+    const monitor = MonitorSDK.createMonitor({
+      dsn: 'https://example.com/api/report',
+      sampleRate: 1.0, errorSampleRate: 1.0, performanceSampleRate: 1.0,
+      batchSize: 5, flushInterval: 3000,
+      plugins: [
+        MonitorSDK.errorPlugin(),
+        MonitorSDK.performancePlugin(),
+        MonitorSDK.networkPlugin({ ignoreUrls: [/example\.com/] }),
+        new MonitorSDK.BehaviorPlugin(),
+      ],
+    });
+
+    // ── Styles ──
+    const styles = {
+      header: {
+        background: 'linear-gradient(135deg, #06b6d4, #8b5cf6)',
+        padding: '32px 24px', borderRadius: '16px', marginBottom: '20px',
+        boxShadow: '0 4px 20px rgba(6,182,212,0.3)',
+      },
+      h1: { fontSize: '24px', fontWeight: '700', marginBottom: '6px' },
+      subtitle: { fontSize: '14px', opacity: 0.85 },
+      card: {
+        background: '#1e293b', borderRadius: '12px', padding: '20px',
+        marginBottom: '14px', border: '1px solid #334155',
+      },
+      cardTitle: { fontSize: '16px', fontWeight: '600', marginBottom: '14px', color: '#f1f5f9' },
+      btnGroup: { display: 'flex', flexWrap: 'wrap', gap: '8px' },
+      btn: (color) => ({
+        padding: '10px 18px', border: 'none', borderRadius: '8px',
+        fontSize: '13px', fontWeight: '500', cursor: 'pointer', color: '#fff',
+        background: color, transition: 'opacity 0.2s',
+      }),
+      log: {
+        background: '#0f172a', borderRadius: '8px', padding: '14px',
+        fontFamily: "'SF Mono', 'Fira Code', monospace", fontSize: '12px',
+        maxHeight: '260px', overflowY: 'auto', lineHeight: 1.7,
+        border: '1px solid #1e293b',
+      },
+      logEntry: { padding: '2px 0', borderBottom: '1px solid rgba(255,255,255,0.03)' },
+      badge: (bg) => ({
+        display: 'inline-block', padding: '2px 8px', borderRadius: '4px',
+        fontSize: '11px', fontWeight: '600', background: bg, marginRight: '6px',
+      }),
+      statusBar: {
+        display: 'flex', gap: '20px', padding: '10px 16px',
+        background: '#1e293b', borderRadius: '8px', fontSize: '13px',
+        marginBottom: '16px', border: '1px solid #334155',
+      },
+      input: {
+        width: '100%', padding: '10px 14px', background: '#0f172a',
+        border: '1px solid #334155', borderRadius: '8px', color: '#e2e8f0',
+        fontSize: '14px', marginBottom: '8px', outline: 'none',
+      },
+    };
+
+    // ── Components ──
+    function Button({ label, color, onClick }) {
+      return <button style={styles.btn(color)} onClick={onClick}>{label}</button>;
+    }
+
+    function EventLog({ entries }) {
+      const logRef = useRef(null);
+      useEffect(() => { if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight; }, [entries]);
+      const colors = { error: '#ef4444', network: '#3b82f6', performance: '#f59e0b', custom: '#a78bfa', behavior: '#34d399' };
+      return (
+        <div ref={logRef} style={styles.log}>
+          {entries.map((e, i) => (
+            <div key={i} style={styles.logEntry}>
+              <span style={{ color: '#475569' }}>[{e.time}]</span>{' '}
+              <span style={styles.badge(colors[e.type] || '#64748b')}>{e.type}</span>
+              <span style={{ color: '#94a3b8' }}>{e.message}</span>
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    function App() {
+      const [logs, setLogs] = useState([{ time: new Date().toLocaleTimeString(), type: 'init', message: 'SDK initialized' }]);
+      const [eventCount, setEventCount] = useState(0);
+      const [sdkActive, setSdkActive] = useState(true);
+
+      const addLog = useCallback((type, message) => {
+        setLogs(prev => [...prev, { time: new Date().toLocaleTimeString(), type, message }]);
+        setEventCount(prev => prev + 1);
+      }, []);
+
+      useEffect(() => {
+        const originalBeforeSend = monitor.getConfig().beforeSend;
+        // We can't easily set beforeSend after init, so we use event bus
+        monitor.eventBus.on('event:captured', (event) => {
+          addLog(event.type || 'custom', event.action || event.message || event.name || 'event captured');
+        });
+      }, [addLog]);
+
+      const handleError = (type) => {
+        addLog('action', `Triggering ${type}...`);
+        if (type === 'ReferenceError') setTimeout(() => { undefinedVar.x; }, 10);
+        else if (type === 'TypeError') setTimeout(() => { null.method(); }, 10);
+        else if (type === 'Promise') Promise.reject(new Error('Unhandled rejection'));
+      };
+
+      const handleFetch = async (status) => {
+        addLog('action', `Fetching (${status})...`);
+        try {
+          const res = await fetch(`https://httpbin.org/status/${status}`);
+          addLog('network', `Response: ${res.status}`);
+        } catch (e) { addLog('network', `Error: ${e.message}`); }
+      };
+
+      const handleCustomEvent = () => {
+        monitor.captureEvent({ type: 'custom', action: 'react_button_click', data: { component: 'App' } });
+        addLog('custom', 'Custom event tracked');
+      };
+
+      const handleSetUser = () => {
+        monitor.setUser({ id: 'react-user-1', username: 'React User', email: 'react@example.com' });
+        addLog('action', 'User set: React User');
+      };
+
+      const handleNav = (path) => {
+        history.pushState(null, '', path);
+        addLog('behavior', `Navigated to ${path}`);
+      };
+
+      const handleDestroy = () => {
+        monitor.destroy();
+        setSdkActive(false);
+        addLog('action', 'SDK destroyed');
+      };
+
+      return (
+        <>
+          <div style={styles.header}>
+            <h1 style={styles.h1}>⚛️ Monitor SDK — React</h1>
+            <p style={styles.subtitle}>React integration demo with hooks-based event tracking</p>
+          </div>
+
+          <div style={styles.statusBar}>
+            <span>● Status: <strong>{sdkActive ? '🟢 Active' : '🔴 Destroyed'}</strong></span>
+            <span>Session: <strong>{monitor.getSessionId().slice(0, 8)}...</strong></span>
+            <span>Events: <strong>{eventCount}</strong></span>
+          </div>
+
+          <div style={styles.card}>
+            <h3 style={styles.cardTitle}>🐛 Error Tracking</h3>
+            <div style={styles.btnGroup}>
+              <Button label="ReferenceError" color="#ef4444" onClick={() => handleError('ReferenceError')} />
+              <Button label="TypeError" color="#f97316" onClick={() => handleError('TypeError')} />
+              <Button label="Promise Rejection" color="#dc2626" onClick={() => handleError('Promise')} />
+            </div>
+          </div>
+
+          <div style={styles.card}>
+            <h3 style={styles.cardTitle}>🌐 Network</h3>
+            <div style={styles.btnGroup}>
+              <Button label="Fetch 200" color="#3b82f6" onClick={() => handleFetch(200)} />
+              <Button label="Fetch 404" color="#6366f1" onClick={() => handleFetch(404)} />
+            </div>
+          </div>
+
+          <div style={styles.card}>
+            <h3 style={styles.cardTitle}>📊 Custom & Navigation</h3>
+            <div style={styles.btnGroup}>
+              <Button label="Track Event" color="#8b5cf6" onClick={handleCustomEvent} />
+              <Button label="Set User" color="#10b981" onClick={handleSetUser} />
+              <Button label="/dashboard" color="#06b6d4" onClick={() => handleNav('/dashboard')} />
+              <Button label="/settings" color="#06b6d4" onClick={() => handleNav('/settings')} />
+              <Button label="Destroy SDK" color="#334155" onClick={handleDestroy} />
+            </div>
+          </div>
+
+          <div style={styles.card}>
+            <h3 style={styles.cardTitle}>📋 Event Log</h3>
+            <EventLog entries={logs} />
+          </div>
+        </>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

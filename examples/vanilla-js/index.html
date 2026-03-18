@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Monitor SDK — Vanilla JS Example</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f5f7fa;
+      color: #1a1a2e;
+      min-height: 100vh;
+    }
+    .container { max-width: 800px; margin: 0 auto; padding: 24px; }
+    header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white; padding: 32px 24px; border-radius: 12px;
+      margin-bottom: 24px; box-shadow: 0 4px 15px rgba(102,126,234,0.4);
+    }
+    header h1 { font-size: 24px; margin-bottom: 8px; }
+    header p { opacity: 0.9; font-size: 14px; }
+    .card {
+      background: white; border-radius: 12px; padding: 24px;
+      margin-bottom: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    .card h2 { font-size: 18px; margin-bottom: 16px; color: #333; }
+    .btn-group { display: flex; flex-wrap: wrap; gap: 8px; }
+    .btn {
+      padding: 10px 20px; border: none; border-radius: 8px;
+      font-size: 14px; cursor: pointer; font-weight: 500;
+      transition: all 0.2s; display: inline-flex; align-items: center; gap: 6px;
+    }
+    .btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+    .btn-red { background: #ff4757; color: white; }
+    .btn-orange { background: #ff6348; color: white; }
+    .btn-blue { background: #3742fa; color: white; }
+    .btn-green { background: #2ed573; color: white; }
+    .btn-purple { background: #7c4dff; color: white; }
+    .btn-dark { background: #2f3542; color: white; }
+    input {
+      width: 100%; padding: 10px 14px; border: 2px solid #e1e5ee;
+      border-radius: 8px; font-size: 14px; margin-bottom: 8px;
+      transition: border-color 0.2s;
+    }
+    input:focus { outline: none; border-color: #667eea; }
+    .event-log {
+      background: #1a1a2e; color: #a8e6cf; border-radius: 8px;
+      padding: 16px; font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 13px; max-height: 300px; overflow-y: auto;
+      line-height: 1.6;
+    }
+    .event-log .entry { padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+    .event-log .ts { color: #636e72; }
+    .event-log .type-error { color: #ff6b6b; }
+    .event-log .type-network { color: #74b9ff; }
+    .event-log .type-performance { color: #fdcb6e; }
+    .event-log .type-custom { color: #a29bfe; }
+    .event-log .type-behavior { color: #55efc4; }
+    .status-bar {
+      display: flex; gap: 16px; padding: 12px 16px;
+      background: #dfe6e9; border-radius: 8px; font-size: 13px;
+      margin-bottom: 16px;
+    }
+    .status-bar .dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      display: inline-block; margin-right: 6px;
+    }
+    .dot-green { background: #2ed573; }
+    .dot-red { background: #ff4757; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>🔍 Monitor SDK — Vanilla JS</h1>
+      <p>Enterprise-grade frontend monitoring with error tracking, performance metrics, network interception, session replay, and user behavior analytics.</p>
+    </header>
+
+    <div class="status-bar">
+      <span><span class="dot dot-green" id="dot-status"></span>SDK Status: <strong id="sdk-status">Ready</strong></span>
+      <span>Session: <strong id="session-id">—</strong></span>
+      <span>Events: <strong id="event-count">0</strong></span>
+    </div>
+
+    <div class="card">
+      <h2>🐛 Error Tracking</h2>
+      <div class="btn-group">
+        <button class="btn btn-red" id="btn-js-error">JS Error</button>
+        <button class="btn btn-orange" id="btn-promise-error">Promise Rejection</button>
+        <button class="btn btn-red" id="btn-type-error">Type Error</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>🌐 Network Monitoring</h2>
+      <div class="btn-group">
+        <button class="btn btn-blue" id="btn-fetch-ok">Fetch (200)</button>
+        <button class="btn btn-orange" id="btn-fetch-404">Fetch (404)</button>
+        <button class="btn btn-blue" id="btn-xhr">XHR Request</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>📊 Custom Events</h2>
+      <div class="btn-group">
+        <button class="btn btn-purple" id="btn-custom">Track Event</button>
+        <button class="btn btn-green" id="btn-user">Set User</button>
+      </div>
+      <div style="margin-top: 12px;">
+        <input type="text" id="input-name" placeholder="Your name" />
+        <input type="email" id="input-email" placeholder="Email address" />
+        <input type="password" id="input-password" placeholder="Password (masked by replay)" />
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>🧭 Navigation</h2>
+      <div class="btn-group">
+        <button class="btn btn-green" id="btn-nav-page2">Go to /page2</button>
+        <button class="btn btn-green" id="btn-nav-page3">Go to /page3</button>
+        <button class="btn btn-dark" id="btn-destroy">Destroy SDK</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>📋 Event Log</h2>
+      <div class="event-log" id="event-log">
+        <div class="entry"><span class="ts">[init]</span> Waiting for SDK...</div>
+      </div>
+    </div>
+  </div>
+
+  <script src="../../tests/e2e/fixtures/monitor-sdk.js"></script>
+  <script>
+    // ── SDK Initialization ──
+    const monitor = MonitorSDK.createMonitor({
+      dsn: 'https://example.com/api/report',
+      sampleRate: 1.0,
+      errorSampleRate: 1.0,
+      performanceSampleRate: 1.0,
+      batchSize: 5,
+      flushInterval: 3000,
+      plugins: [
+        MonitorSDK.errorPlugin(),
+        MonitorSDK.performancePlugin(),
+        MonitorSDK.networkPlugin({ ignoreUrls: [/example\.com/] }),
+        new MonitorSDK.BehaviorPlugin(),
+      ],
+      beforeSend(event) {
+        logEvent(event);
+        return event;
+      },
+    });
+
+    document.getElementById('sdk-status').textContent = 'Active';
+    document.getElementById('session-id').textContent = monitor.getSessionId().slice(0, 8) + '...';
+    log('SDK initialized with error, performance, network, and behavior plugins');
+
+    let eventCount = 0;
+
+    function log(msg) {
+      const el = document.getElementById('event-log');
+      const time = new Date().toLocaleTimeString();
+      const div = document.createElement('div');
+      div.className = 'entry';
+      div.innerHTML = '<span class="ts">[' + time + ']</span> ' + msg;
+      el.appendChild(div);
+      el.scrollTop = el.scrollHeight;
+    }
+
+    function logEvent(event) {
+      eventCount++;
+      document.getElementById('event-count').textContent = eventCount;
+      const typeClass = 'type-' + (event.type || 'custom');
+      log('<span class="' + typeClass + '">[' + event.type + ']</span> ' +
+          (event.action || event.message || event.name || JSON.stringify(event.data || {}).slice(0, 80)));
+    }
+
+    // ── Error Actions ──
+    document.getElementById('btn-js-error').addEventListener('click', () => {
+      log('Triggering ReferenceError...');
+      setTimeout(() => { undefinedVariable.test(); }, 10);
+    });
+
+    document.getElementById('btn-promise-error').addEventListener('click', () => {
+      log('Triggering Promise rejection...');
+      Promise.reject(new Error('Unhandled Promise rejection demo'));
+    });
+
+    document.getElementById('btn-type-error').addEventListener('click', () => {
+      log('Triggering TypeError...');
+      setTimeout(() => { null.someMethod(); }, 10);
+    });
+
+    // ── Network Actions ──
+    document.getElementById('btn-fetch-ok').addEventListener('click', async () => {
+      log('Sending Fetch request (200)...');
+      try {
+        const res = await fetch('https://httpbin.org/get');
+        log('Fetch response: ' + res.status);
+      } catch (e) {
+        log('Fetch error: ' + e.message);
+      }
+    });
+
+    document.getElementById('btn-fetch-404').addEventListener('click', async () => {
+      log('Sending Fetch request (404)...');
+      try {
+        const res = await fetch('https://httpbin.org/status/404');
+        log('Fetch response: ' + res.status);
+      } catch (e) {
+        log('Fetch error: ' + e.message);
+      }
+    });
+
+    document.getElementById('btn-xhr').addEventListener('click', () => {
+      log('Sending XHR request...');
+      const xhr = new XMLHttpRequest();
+      xhr.open('GET', 'https://httpbin.org/get');
+      xhr.onload = () => log('XHR response: ' + xhr.status);
+      xhr.onerror = () => log('XHR error');
+      xhr.send();
+    });
+
+    // ── Custom Events ──
+    document.getElementById('btn-custom').addEventListener('click', () => {
+      monitor.captureEvent({
+        type: 'custom',
+        action: 'button_click',
+        data: { component: 'demo-page', timestamp: Date.now() },
+      });
+      log('Custom event captured');
+    });
+
+    document.getElementById('btn-user').addEventListener('click', () => {
+      const name = document.getElementById('input-name').value || 'Demo User';
+      const email = document.getElementById('input-email').value || 'demo@example.com';
+      monitor.setUser({ id: 'user-001', username: name, email: email });
+      log('User set: ' + name + ' (' + email + ')');
+    });
+
+    // ── Navigation ──
+    document.getElementById('btn-nav-page2').addEventListener('click', () => {
+      history.pushState(null, '', '/page2');
+      log('Navigated to /page2');
+    });
+
+    document.getElementById('btn-nav-page3').addEventListener('click', () => {
+      history.pushState(null, '', '/page3');
+      log('Navigated to /page3');
+    });
+
+    // ── Destroy ──
+    document.getElementById('btn-destroy').addEventListener('click', () => {
+      monitor.destroy();
+      document.getElementById('sdk-status').textContent = 'Destroyed';
+      document.getElementById('dot-status').className = 'dot dot-red';
+      log('SDK destroyed — all listeners removed');
+    });
+  </script>
+</body>
+</html>
