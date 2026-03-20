@@ -218,10 +218,16 @@ describe('parseDsn', () => {
     });
   });
 
-  it('应处理带路径的 DSN', () => {
+  it('应拒绝包含多级路径的 DSN', () => {
     const result = parseDsn('https://key@host.com/project/1');
+    expect(result).toBeNull();
+  });
+
+  it('应正确解析带简单 projectId 的 DSN', () => {
+    const result = parseDsn('https://key@host.com/my-project');
     expect(result).not.toBeNull();
     expect(result!.key).toBe('key');
+    expect(result!.endpoint).toBe('https://host.com/api/v1/events/my-project');
   });
 
   it('无效 DSN 应返回 null', () => {
