@@ -7,7 +7,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/TypeScript-5.4-blue?logo=typescript" alt="TypeScript" />
-  <img src="https://img.shields.io/badge/Tests-766%20passed-brightgreen" alt="Tests" />
+  <img src="https://img.shields.io/badge/Tests-790%20passed-brightgreen" alt="Tests" />
   <img src="https://img.shields.io/badge/Coverage-95.68%25-brightgreen" alt="Coverage" />
   <img src="https://img.shields.io/badge/License-MIT-yellow" alt="License" />
 </p>
@@ -102,7 +102,7 @@ import { networkPlugin } from '@monitor/network';
 import { transportPlugin } from '@monitor/transport';
 
 const monitor = createMonitor({
-  dsn: 'https://your-server.com/api/report',
+  dsn: 'https://your-key@your-server.com/1',
   release: '1.0.0',
   environment: 'production',
 
@@ -140,7 +140,7 @@ monitor.destroy();
 <script src="https://cdn.example.com/monitor-sdk/1.0.0/monitor.umd.js"></script>
 <script>
   const monitor = MonitorSDK.createMonitor({
-    dsn: 'https://your-server.com/api/report',
+    dsn: 'https://your-key@your-server.com/1',
     plugins: [
       MonitorSDK.errorPlugin(),
       MonitorSDK.performancePlugin(),
@@ -332,7 +332,7 @@ const plugin = transportPlugin({
     baseDelay: 1000,          // 指数退避基础延迟
     maxDelay: 30000,
   },
-  unload: true,               // 页面卸载时 flush
+  unloadFlush: true,           // 页面卸载时 flush
 });
 ```
 
@@ -394,18 +394,21 @@ import { BehaviorPlugin } from '@monitor/behavior';
 
 const plugin = new BehaviorPlugin({
   click: {
-    throttleMs: 300,            // 点击事件节流
+    trackDoubleClick: true,     // 记录双击事件
+    textMaxLength: 100,         // 元素文本截断长度
+    selectorMaxDepth: 5,        // CSS 选择器最大深度
   },
   heatmap: {
     flushInterval: 10000,       // 热力图数据上报间隔
-    deduplicateRadius: 5,       // 去重半径 (px)
+    dedupeInterval: 100,        // 去重间隔 (ms)
+    maxPoints: 500,             // 最大缓冲数据点
   },
   journey: {
     maxSteps: 100,              // 最大路径步骤数
   },
   customEvents: {
     flushInterval: 5000,
-    maxBufferSize: 100,
+    maxBuffer: 100,             // 最大缓冲事件数
   },
 });
 
@@ -484,7 +487,7 @@ class MyPlugin implements Plugin {
 
 ```typescript
 const monitor = createMonitor({
-  dsn: 'https://...',
+  dsn: 'https://your-key@your-server.com/1',
   beforeSend(event) {
     // 过滤内部接口错误
     if (event.type === 'network' && event.url?.includes('/internal/')) {
@@ -507,7 +510,7 @@ const monitor = createMonitor({
 
 ```typescript
 const monitor = createMonitor({
-  dsn: 'https://...',
+  dsn: 'https://your-key@your-server.com/1',
   sampleRate: 1.0,
   errorSampleRate: 1.0,          // 错误始终全采集
   performanceSampleRate: 0.5,    // 性能指标采样 50%
@@ -558,7 +561,7 @@ pnpm dev                  # 启动所有包的 watch 模式
 pnpm build                # 构建所有包 (ESM + CJS)
 
 # 测试
-pnpm test                 # 运行单元测试 (766 tests)
+pnpm test                 # 运行单元测试 (790 tests)
 pnpm test:watch           # 测试监听模式
 pnpm test:coverage        # 生成覆盖率报告
 pnpm test:e2e             # Playwright E2E 测试 (13 tests)
