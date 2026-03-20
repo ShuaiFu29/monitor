@@ -31,7 +31,15 @@ export function calculateBackoffDelay(
   attempt: number,
   config: Required<RetryConfig>,
 ): number {
-  const exponentialDelay = config.baseDelay * Math.pow(2, attempt);
+  // 防御性校验
+  if (attempt < 0 || !Number.isFinite(attempt)) {
+    return config.baseDelay;
+  }
+
+  // 限制最大指数，防止 Math.pow(2, attempt) 溢出为 Infinity
+  // Math.pow(2, 30) ≈ 10 亿，已经远超任何合理的 maxDelay
+  const safeAttempt = Math.min(Math.floor(attempt), 30);
+  const exponentialDelay = config.baseDelay * Math.pow(2, safeAttempt);
   const clampedDelay = Math.min(exponentialDelay, config.maxDelay);
 
   if (config.jitter) {

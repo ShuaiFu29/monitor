@@ -147,6 +147,11 @@ export class TransportEngine {
   sendUrgent(events: BaseEvent[]): boolean {
     if (events.length === 0) return true;
 
+    // 警告潜在的竞态：如果正在异步发送，紧急发送可能导致数据重复
+    if (this.sending) {
+      logger.warn('[TransportEngine] Urgent send called while async send is in progress. Data may be duplicated.');
+    }
+
     try {
       const json = JSON.stringify(events);
       const sendHeaders = {
@@ -156,11 +161,16 @@ export class TransportEngine {
 
       // 优先尝试 Beacon（最可靠的卸载发送方式）
       if (typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function') {
-        const blob = new Blob([json], { type: 'application/json' });
-        const success = navigator.sendBeacon(this.endpoint, blob);
-        if (success) {
-          logger.debug('[TransportEngine] Urgent send via Beacon succeeded.');
-          return true;
+        try {
+          const blob = new Blob([json], { type: 'application/json' });
+          const success = navigator.sendBeacon(this.endpoint, blob);
+          if (success) {
+            logger.debug('[TransportEngine] Urgent send via Beacon succeeded.');
+            return true;
+          }
+          logger.debug('[TransportEngine] Beacon returned false, falling back to XHR.');
+        } catch (error) {
+          logger.debug('[TransportEngine] Beacon threw error, falling back to XHR:', error as Error);
         }
       }
 
@@ -173,9 +183,15 @@ export class TransportEngine {
             xhr.setRequestHeader(key, value);
           }
           xhr.send(json);
-          return xhr.status >= 200 && xhr.status < 300;
-        } catch {
-          // 同步 XHR 可能被浏览器阻止
+          const success = xhr.status >= 200 && xhr.status < 300;
+          if (success) {
+            logger.debug('[TransportEngine] Urgent send via sync XHR succeeded.');
+          } else {
+            logger.warn(`[TransportEngine] Urgent sync XHR returned status ${xhr.status}.`);
+          }
+          return success;
+        } catch (error) {
+          logger.debug('[TransportEngine] Sync XHR failed (may be blocked by browser):', error as Error);
         }
       }
 
@@ -215,26 +231,65 @@ export class TransportEngine {
  *
  * DSN 格式: https://{key}@{host}/{projectId}
  * 端点格式: https://{host}/api/v1/events/{projectId}
+ *
+ * @example
+ * ```ts
+ * parseDsn('https://my-key@monitor.example.com/1');
+ * // => { endpoint: 'https://monitor.example.com/api/v1/events/1', key: 'my-key' }
+ * ```
  */
 export function parseDsn(dsn: string): { endpoint: string; key: string } | null {
+  if (!dsn || typeof dsn !== 'string') {
+    logger.error('[parseDsn] DSN must be a non-empty string.');
+    return null;
+  }
+
   try {
     const url = new URL(dsn);
-    const key = url.username;
-    const host = url.host;
-    const protocol = url.protocol;
-    const projectId = url.pathname.replace(/^\//, '');
 
-    if (!key || !host || !projectId) {
-      logger.error('[TransportEngine] Invalid DSN format:', dsn);
+    // 验证协议
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+      logger.error(`[parseDsn] Invalid protocol "${url.protocol}". Only http: and https: are supported.`);
+      return null;
+    }
+
+    const key = url.username;
+    if (!key || key.trim() === '') {
+      logger.error('[parseDsn] DSN must contain a key (username part). Expected format: https://{key}@{host}/{projectId}');
+      return null;
+    }
+
+    const host = url.host;
+    if (!host) {
+      logger.error('[parseDsn] DSN must contain a valid host.');
+      return null;
+    }
+
+    const projectId = url.pathname.replace(/^\//, '');
+    if (!projectId || projectId.trim() === '') {
+      logger.error('[parseDsn] DSN must contain a projectId (path part). Expected format: https://{key}@{host}/{projectId}');
+      return null;
+    }
+
+    // 检查 projectId 是否包含多级路径（常见的误配置）
+    if (projectId.includes('/')) {
+      logger.error(
+        `[parseDsn] Invalid projectId "${projectId}". ` +
+        'projectId should be a simple identifier (e.g. "1" or "my-project"), not a path. ' +
+        'Expected DSN format: https://{key}@{host}/{projectId}',
+      );
       return null;
     }
 
     return {
-      endpoint: `${protocol}//${host}/api/v1/events/${projectId}`,
+      endpoint: `${url.protocol}//${host}/api/v1/events/${projectId}`,
       key,
     };
   } catch {
-    logger.error('[TransportEngine] Failed to parse DSN:', dsn);
+    logger.error(
+      `[parseDsn] Failed to parse DSN: "${dsn}". ` +
+      'Expected format: https://{key}@{host}/{projectId}',
+    );
     return null;
   }
 }

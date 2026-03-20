@@ -10,6 +10,44 @@ function isBrowserEnvironment(): boolean {
 }
 
 /**
+ * 验证 DSN 格式是否正确
+ *
+ * DSN 格式: https://{key}@{host}/{projectId}
+ * 仅做格式校验并输出警告，不阻止 SDK 初始化。
+ */
+function validateDsn(dsn: string): void {
+  try {
+    const url = new URL(dsn);
+
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+      logger.error(`[createMonitor] Invalid DSN protocol "${url.protocol}". Only http: and https: are supported.`);
+      return;
+    }
+
+    if (!url.username) {
+      logger.error('[createMonitor] DSN must contain a key. Expected format: https://{key}@{host}/{projectId}');
+      return;
+    }
+
+    const projectId = url.pathname.replace(/^\//, '');
+    if (!projectId) {
+      logger.error('[createMonitor] DSN must contain a projectId. Expected format: https://{key}@{host}/{projectId}');
+      return;
+    }
+
+    if (projectId.includes('/')) {
+      logger.error(
+        `[createMonitor] Invalid DSN projectId "${projectId}". ` +
+        'projectId should be a simple identifier (e.g. "1"), not a path. ' +
+        'Expected format: https://{key}@{host}/{projectId}',
+      );
+    }
+  } catch {
+    logger.error(`[createMonitor] Failed to parse DSN: "${dsn}". Expected format: https://{key}@{host}/{projectId}`);
+  }
+}
+
+/**
  * 创建浏览器监控实例
  *
  * 这是用户使用 SDK 的主入口函数，负责：
@@ -31,6 +69,11 @@ function isBrowserEnvironment(): boolean {
 export function createMonitor(config: MonitorConfig): Monitor {
   if (!isBrowserEnvironment()) {
     logger.warn('Monitor SDK requires a browser environment.');
+  }
+
+  // 在初始化阶段验证 DSN 格式，避免运行时才发现问题
+  if (config.dsn) {
+    validateDsn(config.dsn);
   }
 
   const monitor = new Monitor(config);

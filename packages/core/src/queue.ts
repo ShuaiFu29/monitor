@@ -1,4 +1,5 @@
 import type { BaseEvent } from '@monitor/types';
+import { logger } from '@monitor/utils';
 
 /**
  * 事件队列 - 内存缓冲
@@ -63,6 +64,11 @@ export class EventQueue {
    * 队列满时自动 flush
    */
   enqueue(event: BaseEvent): void {
+    if (!event) {
+      logger.warn('[EventQueue] Attempted to enqueue null/undefined event, ignored.');
+      return;
+    }
+
     this.queue.push(event);
 
     // 达到批量大小时立即 flush
@@ -73,12 +79,15 @@ export class EventQueue {
 
     // 队列溢出保护
     if (this.queue.length >= this.maxQueueSize) {
+      logger.warn(`[EventQueue] Queue size (${this.queue.length}) reached max limit (${this.maxQueueSize}), forcing flush.`);
       this.flush();
     }
   }
 
   /**
    * 立即刷新队列中的所有事件
+   *
+   * 如果 flush 回调抛出异常，会将事件恢复到队列头部，防止数据丢失。
    */
   flush(): void {
     if (this.queue.length === 0) return;
@@ -87,7 +96,13 @@ export class EventQueue {
     this.queue = [];
 
     if (this.onFlush) {
-      this.onFlush(events);
+      try {
+        this.onFlush(events);
+      } catch (error) {
+        logger.error('[EventQueue] Flush handler threw error, restoring events to queue:', error as Error);
+        // 恢复到队列头部，防止数据丢失
+        this.queue.unshift(...events);
+      }
     }
   }
 
@@ -110,8 +125,8 @@ export class EventQueue {
    * 先 flush 剩余事件，再停止定时器
    */
   destroy(): void {
-    this.flush();
     this.stop();
+    this.flush();
     this.onFlush = null;
   }
 }

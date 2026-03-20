@@ -95,26 +95,61 @@ export class ConfigManager {
   update(patch: Partial<MonitorConfig>): void {
     // 不允许更新 dsn
     if (patch.dsn && patch.dsn !== this.config.dsn) {
-      logger.warn('Cannot change "dsn" after initialization.');
+      logger.warn('[ConfigManager] Cannot change "dsn" after initialization.');
       return;
     }
 
+    // 验证并更新采样率字段
     if (patch.sampleRate !== undefined) {
       if (patch.sampleRate < 0 || patch.sampleRate > 1) {
-        logger.warn('"sampleRate" must be between 0 and 1, ignoring update.');
+        logger.warn('[ConfigManager] "sampleRate" must be between 0 and 1, ignoring update.');
         return;
       }
       this.config.sampleRate = patch.sampleRate;
     }
 
     if (patch.errorSampleRate !== undefined) {
+      if (patch.errorSampleRate < 0 || patch.errorSampleRate > 1) {
+        logger.warn('[ConfigManager] "errorSampleRate" must be between 0 and 1, ignoring update.');
+        return;
+      }
       this.config.errorSampleRate = patch.errorSampleRate;
     }
 
     if (patch.performanceSampleRate !== undefined) {
+      if (patch.performanceSampleRate < 0 || patch.performanceSampleRate > 1) {
+        logger.warn('[ConfigManager] "performanceSampleRate" must be between 0 and 1, ignoring update.');
+        return;
+      }
       this.config.performanceSampleRate = patch.performanceSampleRate;
     }
 
+    // 验证并更新数值型配置
+    if (patch.batchSize !== undefined) {
+      if (!Number.isInteger(patch.batchSize) || patch.batchSize <= 0) {
+        logger.warn('[ConfigManager] "batchSize" must be a positive integer, ignoring update.');
+        return;
+      }
+      this.config.batchSize = patch.batchSize;
+    }
+
+    if (patch.flushInterval !== undefined) {
+      if (!Number.isInteger(patch.flushInterval) || patch.flushInterval <= 0) {
+        logger.warn('[ConfigManager] "flushInterval" must be a positive integer, ignoring update.');
+        return;
+      }
+      this.config.flushInterval = patch.flushInterval;
+    }
+
+    if (patch.maxRetries !== undefined) {
+      if (!Number.isInteger(patch.maxRetries) || patch.maxRetries < 0) {
+        logger.warn('[ConfigManager] "maxRetries" must be a non-negative integer, ignoring update.');
+        return;
+      }
+      this.config.maxRetries = patch.maxRetries;
+    }
+
+    // 更新其他字段
     if (patch.context) {
       this.config.context = { ...this.config.context, ...patch.context };
     }
