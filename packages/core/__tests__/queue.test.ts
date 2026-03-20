@@ -128,6 +128,43 @@ describe('EventQueue', () => {
     });
   });
 
+  describe('enqueue guard', () => {
+    it('should ignore null/undefined events', () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const flushHandler = vi.fn();
+      queue = new EventQueue({ batchSize: 5 });
+      queue.setFlushHandler(flushHandler);
+
+      queue.enqueue(null as any);
+      queue.enqueue(undefined as any);
+
+      expect(queue.size()).toBe(0);
+      expect(warnSpy).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe('flush error recovery', () => {
+    it('should restore events to queue if flush handler throws', () => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const flushHandler = vi.fn().mockImplementation(() => {
+        throw new Error('Transport error');
+      });
+      queue = new EventQueue({ batchSize: 10 });
+      queue.setFlushHandler(flushHandler);
+
+      const event1 = createEvent();
+      const event2 = createEvent();
+      queue.enqueue(event1);
+      queue.enqueue(event2);
+
+      queue.flush();
+
+      // Events should be restored
+      expect(queue.size()).toBe(2);
+      expect(errorSpy).toHaveBeenCalled();
+    });
+  });
+
   describe('clear', () => {
     it('should clear queue without flushing', () => {
       const flushHandler = vi.fn();

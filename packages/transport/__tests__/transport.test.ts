@@ -237,4 +237,24 @@ describe('parseDsn', () => {
   it('缺少 key 应返回 null', () => {
     expect(parseDsn('https://monitor.example.com/42')).toBeNull();
   });
+
+  it('空字符串应返回 null', () => {
+    expect(parseDsn('')).toBeNull();
+  });
+
+  it('非字符串类型应返回 null', () => {
+    expect(parseDsn(null as any)).toBeNull();
+    expect(parseDsn(undefined as any)).toBeNull();
+  });
+
+  it('缺少 projectId 应返回 null', () => {
+    expect(parseDsn('https://key@host.com/')).toBeNull();
+    expect(parseDsn('https://key@host.com')).toBeNull();
+  });
+
+  it('应支持 http 协议', () => {
+    const result = parseDsn('http://key@host.com/1');
+    expect(result).not.toBeNull();
+    expect(result!.endpoint).toBe('http://host.com/api/v1/events/1');
+  });
 });

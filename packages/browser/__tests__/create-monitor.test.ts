@@ -12,6 +12,7 @@ describe('createMonitor', () => {
     vi.spyOn(console, 'info').mockImplementation(() => {});
     vi.spyOn(console, 'debug').mockImplementation(() => {});
     vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.spyOn(console, 'error').mockImplementation(() => {});
   });
 
   afterEach(() => {
@@ -86,6 +87,51 @@ describe('createMonitor', () => {
 
     // Destroy
     monitor.destroy();
+  });
+
+  describe('DSN validation', () => {
+    it('should warn on DSN with invalid protocol', () => {
+      const errorSpy = console.error as ReturnType<typeof vi.fn>;
+      const monitor = createMonitor({ dsn: 'ftp://key@host.com/1' });
+      expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('Invalid DSN protocol'));
+      monitor.destroy();
+    });
+
+    it('should warn on DSN without key', () => {
+      const errorSpy = console.error as ReturnType<typeof vi.fn>;
+      const monitor = createMonitor({ dsn: 'https://host.com/1' });
+      expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('DSN must contain a key'));
+      monitor.destroy();
+    });
+
+    it('should warn on DSN without projectId', () => {
+      const errorSpy = console.error as ReturnType<typeof vi.fn>;
+      const monitor = createMonitor({ dsn: 'https://key@host.com/' });
+      expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('DSN must contain a projectId'));
+      monitor.destroy();
+    });
+
+    it('should warn on DSN with multi-level projectId', () => {
+      const errorSpy = console.error as ReturnType<typeof vi.fn>;
+      const monitor = createMonitor({ dsn: 'https://key@host.com/api/v1/report' });
+      expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('Invalid DSN projectId'));
+      monitor.destroy();
+    });
+
+    it('should warn on completely invalid DSN string', () => {
+      const errorSpy = console.error as ReturnType<typeof vi.fn>;
+      const monitor = createMonitor({ dsn: 'not-a-url' });
+      expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('Failed to parse DSN'));
+      monitor.destroy();
+    });
+
+    it('should not warn on valid DSN', () => {
+      const errorSpy = console.error as ReturnType<typeof vi.fn>;
+      errorSpy.mockClear();
+      const monitor = createMonitor({ dsn: 'https://key@host.com/1' });
+      expect(errorSpy).not.toHaveBeenCalledWith(expect.stringContaining('DSN'));
+      monitor.destroy();
+    });
   });
 
   it('should support runtime plugin installation', () => {

@@ -113,6 +113,89 @@ describe('ConfigManager', () => {
       expect(warnSpy).toHaveBeenCalled();
     });
 
+    it('should reject invalid errorSampleRate update', () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const manager = new ConfigManager(BASE_CONFIG);
+      manager.update({ errorSampleRate: -1 });
+      expect(manager.get('errorSampleRate')).toBe(1.0);
+      expect(warnSpy).toHaveBeenCalled();
+    });
+
+    it('should update valid errorSampleRate', () => {
+      const manager = new ConfigManager(BASE_CONFIG);
+      manager.update({ errorSampleRate: 0.5 });
+      expect(manager.get('errorSampleRate')).toBe(0.5);
+    });
+
+    it('should reject invalid performanceSampleRate update', () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const manager = new ConfigManager(BASE_CONFIG);
+      manager.update({ performanceSampleRate: 2 });
+      expect(manager.get('performanceSampleRate')).toBe(0.1);
+      expect(warnSpy).toHaveBeenCalled();
+    });
+
+    it('should update valid performanceSampleRate', () => {
+      const manager = new ConfigManager(BASE_CONFIG);
+      manager.update({ performanceSampleRate: 0.8 });
+      expect(manager.get('performanceSampleRate')).toBe(0.8);
+    });
+
+    it('should reject invalid batchSize update', () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const manager = new ConfigManager(BASE_CONFIG);
+      manager.update({ batchSize: -1 });
+      expect(manager.get('batchSize')).toBe(10);
+      manager.update({ batchSize: 0 });
+      expect(manager.get('batchSize')).toBe(10);
+      manager.update({ batchSize: 1.5 });
+      expect(manager.get('batchSize')).toBe(10);
+      expect(warnSpy).toHaveBeenCalled();
+    });
+
+    it('should update valid batchSize', () => {
+      const manager = new ConfigManager(BASE_CONFIG);
+      manager.update({ batchSize: 20 });
+      expect(manager.get('batchSize')).toBe(20);
+    });
+
+    it('should reject invalid flushInterval update', () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const manager = new ConfigManager(BASE_CONFIG);
+      manager.update({ flushInterval: 0 });
+      expect(manager.get('flushInterval')).toBe(5000);
+      expect(warnSpy).toHaveBeenCalled();
+    });
+
+    it('should update valid flushInterval', () => {
+      const manager = new ConfigManager(BASE_CONFIG);
+      manager.update({ flushInterval: 3000 });
+      expect(manager.get('flushInterval')).toBe(3000);
+    });
+
+    it('should reject invalid maxRetries update', () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const manager = new ConfigManager(BASE_CONFIG);
+      manager.update({ maxRetries: -1 });
+      expect(manager.get('maxRetries')).toBe(3);
+      expect(warnSpy).toHaveBeenCalled();
+    });
+
+    it('should update valid maxRetries (including zero)', () => {
+      const manager = new ConfigManager(BASE_CONFIG);
+      manager.update({ maxRetries: 0 });
+      expect(manager.get('maxRetries')).toBe(0);
+      manager.update({ maxRetries: 5 });
+      expect(manager.get('maxRetries')).toBe(5);
+    });
+
+    it('should update onError callback', () => {
+      const manager = new ConfigManager(BASE_CONFIG);
+      const errorHandler = (error: any) => console.log(error);
+      manager.update({ onError: errorHandler });
+      expect(manager.get('onError')).toBe(errorHandler);
+    });
+
     it('should merge context on update', () => {
       const manager = new ConfigManager({
         ...BASE_CONFIG,
